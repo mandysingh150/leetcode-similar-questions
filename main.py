@@ -38,7 +38,8 @@ with open('chapters.pickle', 'rb') as f:
 
 def download(problem_num, url, title, solution_slug):
     print(Fore.BLACK + Back.CYAN + f"Fetching problem num " + Back.YELLOW + f" {problem_num} " + Back.CYAN + " with url " + Back.YELLOW + f" {url} ")
-    n = len(title)
+    # n = len(title)
+    print('\t', end='')
 
     try:
         ####################################################################
@@ -56,7 +57,8 @@ def download(problem_num, url, title, solution_slug):
         problem_statement_examples_contraints = ''
         for val in tt:
             problem_statement_examples_contraints += f'{val.lstrip().rstrip()} '
-        print('\t==> problem description')
+        print(Back.LIGHTMAGENTA_EX + '   ', end='')
+        # print('\t==> problem description')
 
 
 
@@ -64,7 +66,7 @@ def download(problem_num, url, title, solution_slug):
         ####################################################################
         # For obtaining the most voted solution link of the problem
         ####################################################################
-        time.sleep(0.5)
+        # time.sleep(0.5)
         url = url + '/solutions/?orderBy=most_votes'
         driver.get(url)
         # Wait 10 secs or until div with class 'transition-[background] duration-500' appears
@@ -74,44 +76,64 @@ def download(problem_num, url, title, solution_slug):
 
         html = driver.page_source
         soup = bs4.BeautifulSoup(html, "html.parser")
-        tt = soup.find("div", {"class": "relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500"})
-        solution_slug = tt.div.div.div.a['href']
-        solution_page_link = f'https://leetcode.com{solution_slug}'
-        print(f'\t==> solution_link = {solution_page_link}')
+        tt = soup.find_all("div", {"class": "relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500"})
+
+        for index, i in enumerate(tt):
+            try:
+                # We encode and then decode to remove all the unnecessary UNICODE characters
+                # i = str(i).encode("ascii", "ignore").decode()
+                solution_slug = i.div.div.div.a['href']
+                solution_page_link = f'https://leetcode.com{solution_slug}'
+                print(Back.BLUE + '   ', end='')
+                # print(f'\t==> solution_link = {solution_page_link}')
+
+                ####################################################################
+                # For obtaining the content of the most voted solution of the problem
+                ####################################################################
+                # time.sleep(0.5)
+                url = solution_page_link
+                driver.get(url)
+                # Wait 10 secs or until div with class '_16yfq _2YoR3' appears
+                element = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "._16yfq._2YoR3"))
+                )
+                # Get current tab page source
+                html = driver.page_source
+                soup = bs4.BeautifulSoup(html, "html.parser")
+                tt2 = soup.find("div", {"class": "_16yfq _2YoR3"})
+                txt1 = tt2.get_text()
+                txt1 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt1)])
+                # txt1 = tt2.get_text().encode("ascii", "ignore").decode().splitlines()
+
+                
+                tt2 = soup.find("div", {"class": "mb-6 rounded-lg px-3 py-2.5 font-menlo text-sm bg-fill-3 dark:bg-dark-fill-3"})
+                txt2 = tt2.get_text()
+                txt2 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt2)])
+                # txt2 = tt2.get_text().encode("ascii", "ignore").decode().splitlines()
+
+                solution_content = ''
+                for text in txt1:
+                    if text in txt2 and text.lstrip().rstrip() != '':
+                        break
+                    solution_content += f'{text}\n'
+                print(Fore.BLACK + Back.WHITE + f' {index+1} ', end='')
+                # print(f'\t==> {index+1}. most voted solution content')
+
+                return problem_statement_examples_contraints, solution_page_link, solution_content
 
 
+            except Exception as ee:
+                print(Back.RED + ' ^ ', end='')
+                # print(Back.RED + f" Failed!!: Error =  {ee} ")
+                continue
 
 
-        ####################################################################
-        # For obtaining the content of the most voted solution of the problem
-        ####################################################################
-        time.sleep(0.5)
-        url = solution_page_link
-        driver.get(url)
-        # Wait 10 secs or until div with class '_16yfq _2YoR3' appears
-        element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "._16yfq._2YoR3"))
-        )
-        # Get current tab page source
-        html = driver.page_source
-        soup = bs4.BeautifulSoup(html, "html.parser")
-        tt = soup.find("div", {"class": "_16yfq _2YoR3"})
-        txt1 = tt.get_text().splitlines()
-        
-        tt = soup.find("div", {"class": "mb-6 rounded-lg px-3 py-2.5 font-menlo text-sm bg-fill-3 dark:bg-dark-fill-3"})
-        txt2 = tt.get_text().splitlines()
-
-        solution_content = ''
-        for text in txt1:
-            if text in txt2 and text.lstrip().rstrip() != '':
-                break
-            solution_content += f'{text}\n'
-        print('\t==> most voted solution content')
-
-        return problem_statement_examples_contraints, solution_page_link, solution_content
+        print(Back.RED + f'\t==> cannot find any valid solution among first 15 solutions')
+        return '', '', ''
 
     except Exception as e:
-        print(Back.RED + f" Failed Writing!!  {e} ")
+        print(Back.RED + ' X ')
+        # print(Back.RED + f" Failed Writing!!  {e} ")
         driver.quit()
         exit(0)
 
@@ -153,30 +175,32 @@ def main():
             title = f"{frontend_question_id}. {question__title}"
 
             # Download each file as html and write chapter to chapters.pickle
-            problem_statement_examples_contraints, solution_page_link, solution_content = download(problem_num+1, url , title, question__article__slug)
+            problem_statement_examples_contraints, solution_page_link, solution_content = download(problem_num, url , title, question__article__slug)
 
             if problem_statement_examples_contraints != '':
                 row_item = [frontend_question_id, question__title, problem_statement_examples_contraints, solution_page_link, solution_content]
 
                 with open('data.csv', 'a') as fp:
-                    print(Fore.BLACK + Back.CYAN + f"\tWriting problem num " + Back.YELLOW + f' {problem_num+1} ' + Back.CYAN  + "  ==>  ", end='')
+                    print(Fore.BLACK + Back.CYAN + "  ==>  ", end='')
+                    # print(Fore.BLACK + Back.CYAN + f"\tWriting problem num " + Back.YELLOW + f' {problem_num} ' + Back.CYAN  + "  ==>  ", end='')
                     
-                    row_item = ['`'.join(str(x).split(',')) for x in row_item]
+                    row_item = ['`'.join(''.join([i if ord(i) < 128 else ' ' for i in str(x)]).replace('\n', ' ').split(',')) for x in row_item]
+                    # row_item = ['`'.join(str(x).encode("ascii", "ignore").decode().replace('\n', ' ').split(',')) for x in row_item]
 
-                    fp.write(','.join(row_item))
+                    fp.write(','.join(row_item) + '\n')
                     
                     print(Fore.BLACK + Back.GREEN + " SUCCESSFUL ")
 
                     # Update upto which the problem is downloaded
                     update_tracker('track.conf', problem_num)
 
-            # Sleep for 20 secs for each problem and 2 mins after every 30 problems
+            # Sleep for 1.5 secs for each problem and 10 secs after every 30 problems
             if (problem_num+1) % 30 == 0:
-                print(f"Sleeping 120 secs\n")
-                time.sleep(120)
+                print(f"Sleeping 10 secs\n")
+                time.sleep(10)
             else:
-                print(f"Sleeping 25 secs\n")
-                time.sleep(25)
+                print(f"Sleeping 1.5 secs\n")
+                time.sleep(1.5)
 
     finally:
         # Close the browser after download
