@@ -19,6 +19,7 @@ colorama.init(autoreset=True)
 # Setup Selenium Webdriver
 CHROMEDRIVER_PATH = r"./driver/chromedriver.exe"
 options = Options()
+# options.add_argument('--headless=True')
 # options.add_argument("start-maximized")
 
 # Disable Warning, Error and Info logs
@@ -30,7 +31,7 @@ driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=options)
 completed_upto = read_tracker("track.conf")
 
 # if the first question of the session is to be processed, then we need to set the "Sort by" option to "Most Votes"
-first_question_to_be_processed = True
+# first_question_to_be_processed = True
 
 
 def download(problem_num, url, title, solution_slug):
@@ -53,6 +54,8 @@ def download(problem_num, url, title, solution_slug):
         problem_statement_examples_contraints = ''
         for val in tt:
             problem_statement_examples_contraints += f'{val.lstrip().rstrip()} '
+
+        assert problem_statement_examples_contraints != ''
         print(Back.LIGHTMAGENTA_EX + '   ', end='')
 
 
@@ -63,8 +66,12 @@ def download(problem_num, url, title, solution_slug):
         url = url + '/solutions'
         driver.get(url)
         
-        global first_question_to_be_processed
-        if first_question_to_be_processed:
+        try:
+            element = WebDriverWait(driver, 4).until(
+                EC.presence_of_element_located((By.XPATH, "//button[.='Votes']"))
+            )
+
+        except:
             # wait for "Sort by" button to be clickable and then click it
             element = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[.='Sort by']"))
@@ -77,10 +84,10 @@ def download(problem_num, url, title, solution_slug):
             )
             element.click()
         
-            time.sleep(2)
+            time.sleep(4)
         
         # wait for all solutions to be ordered in descending order of votes
-        time.sleep(0.6)
+        time.sleep(0.8)
         element = WebDriverWait(driver, 10).until(
             lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
         )
@@ -113,28 +120,41 @@ def download(problem_num, url, title, solution_slug):
                 soup = bs4.BeautifulSoup(html, "html.parser")
                 tt2 = soup.find("div", {"class": "_16yfq _2YoR3"})
                 txt1 = tt2.get_text()
-                txt1 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt1)])
+                txt1 = (''.join([i if ord(i) < 128 else ' ' for i in txt1])).splitlines()
+                # cnt = txt1.count('\n')
+                # print(f"# of Enter = {cnt}")
+                # len(re.findall(r".*[\n].*", txt1))
 
-                tt2 = soup.find("div", {"class": "mb-6 rounded-lg px-3 py-2.5 font-menlo text-sm bg-fill-3 dark:bg-dark-fill-3"})
-                txt2 = tt2.get_text()
-                txt2 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt2)])
+                tt2 = soup.find_all("div", {"class": "mb-6 rounded-lg px-3 py-2.5 font-menlo text-sm bg-fill-3 dark:bg-dark-fill-3"})
+                txt2 = []
+                for element in tt2:
+                    e1 = element.get_text()
+                    e1 = (''.join([i if ord(i) < 128 else ' ' for i in e1])).splitlines()
+                    txt2 = txt2 + e1
+
+                # txt2 = tt2.get_text()
+                # txt2 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt2)])
 
                 solution_content = ''
                 for text in txt1:
-                    if text in txt2 and text.lstrip().rstrip() != '':
-                        break
-                    solution_content += f'{text}\n'
+                    if text.lstrip().rstrip() == '' or (text in txt2 and text.lstrip().rstrip() != ''):
+                        continue
+                    solution_content += f'{text}~~'
 
-                if re.match(r'.*\svideo[\s].*|.*\svideo[^a-zA-Z0-9].*', solution_content):
-                    raise Exception('video solution found')
+                if (re.match(r'.*\svideo\s.*', solution_content)) or re.match(r'.*\svideo[^a-zA-Z0-9].*', solution_content):
+                    author_id = soup.find("a", {"class": "no-underline text-label-2 dark:text-dark-label-2 text-xs overflow-hidden max-w-[100px] md:max-w-[200px] font-normal hover:text-blue-s dark:hover:text-dark-blue-s truncate"}).get_text()
+                    raise Exception(f'{author_id}')
+                
+                if solution_content == '':
+                    raise Exception(f'{solution_page_link} ==> content is empty')
 
                 print(Fore.BLACK + Back.WHITE + f' {index+1} ', end='')
 
                 return problem_statement_examples_contraints, solution_page_link, solution_content
 
-
+# <a target="_blank" rel="noopener noreferrer" class="no-underline text-label-2 dark:text-dark-label-2 text-xs overflow-hidden max-w-[100px] md:max-w-[200px] font-normal hover:text-blue-s dark:hover:text-dark-blue-s truncate" href="/milu/">milu</a>
             except Exception as ee:
-                # print(Back.RED + f" Failed!!: Error =  {ee} ")
+                print(Back.RED + f" Failed!!, Error =  {ee} ")
                 print(Back.RED + ' ^ ', end='')
                 continue
 
@@ -143,7 +163,7 @@ def download(problem_num, url, title, solution_slug):
         return '', '', ''
 
     except Exception as e:
-        # print(Back.RED + f" Failed Writing!!  {e} ")
+        print(Back.RED + f" Failed Writing!!, Error = {e} ")
         print(Back.RED + ' X ')
         driver.quit()
         exit(0)
@@ -184,7 +204,7 @@ def main():
             title = f"{frontend_question_id}. {question__title}"
 
             # Download each file as html and write chapter to chapters.pickle
-            problem_statement_examples_contraints, solution_page_link, solution_content = download(problem_num, url , title, question__article__slug)
+            problem_statement_examples_contraints, solution_page_link, solution_content = download(frontend_question_id, url , title, question__article__slug)
 
             if problem_statement_examples_contraints != '':
                 row_item = [frontend_question_id, question__title, problem_statement_examples_contraints, solution_page_link, solution_content]
@@ -198,14 +218,18 @@ def main():
                     
                     print(Fore.BLACK + Back.GREEN + " SUCCESSFUL ")
                     print()
-                    
-                    global first_question_to_be_processed
-                    first_question_to_be_processed = False
 
                     # Update upto which the problem is downloaded
                     update_tracker('track.conf', problem_num)
 
-    finally:
+        print(Back.LIGHTYELLOW_EX + '\tDOWNLOAD COMPLETED\t')
+
+    except Exception as e:
+        print(Back.RED + f" Failed in main!!, Error = {e} ")
+        print(Back.RED + f" X ")
+        
+
+    finally:        
         # Close the browser after download
         driver.quit()
     
