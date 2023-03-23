@@ -121,19 +121,13 @@ def download(problem_num, url, title, solution_slug):
                 tt2 = soup.find("div", {"class": "_16yfq _2YoR3"})
                 txt1 = tt2.get_text()
                 txt1 = (''.join([i if ord(i) < 128 else ' ' for i in txt1])).splitlines()
-                # cnt = txt1.count('\n')
-                # print(f"# of Enter = {cnt}")
-                # len(re.findall(r".*[\n].*", txt1))
-
+                
                 tt2 = soup.find_all("div", {"class": "mb-6 rounded-lg px-3 py-2.5 font-menlo text-sm bg-fill-3 dark:bg-dark-fill-3"})
                 txt2 = []
                 for element in tt2:
                     e1 = element.get_text()
                     e1 = (''.join([i if ord(i) < 128 else ' ' for i in e1])).splitlines()
                     txt2 = txt2 + e1
-
-                # txt2 = tt2.get_text()
-                # txt2 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt2)])
 
                 solution_content = ''
                 for text in txt1:
@@ -152,7 +146,6 @@ def download(problem_num, url, title, solution_slug):
 
                 return problem_statement_examples_contraints, solution_page_link, solution_content
 
-# <a target="_blank" rel="noopener noreferrer" class="no-underline text-label-2 dark:text-dark-label-2 text-xs overflow-hidden max-w-[100px] md:max-w-[200px] font-normal hover:text-blue-s dark:hover:text-dark-blue-s truncate" href="/milu/">milu</a>
             except Exception as ee:
                 print(Back.RED + f" Failed!!, Error =  {ee} ")
                 print(Back.RED + ' ^ ', end='')
