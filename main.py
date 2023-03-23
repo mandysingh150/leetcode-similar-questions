@@ -1,13 +1,11 @@
 import re
 import json
-import pickle
 import time
 
 import bs4
 import colorama
 import requests
 from colorama import Back, Fore
-# from ebooklib import epub
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -28,23 +26,15 @@ options = Options()
 options.add_argument("--log-level=3")
 driver = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, options=options)
 
-
 # Get upto which problem it is already scraped from track.conf file
 completed_upto = read_tracker("track.conf")
 
-# Load chapters list that stores chapter info
-# Store chapter info
-# with open('chapters.pickle', 'rb') as f:
-#     chapters = pickle.load(f)
-
-# print('l1')
 # if the first question of the session is to be processed, then we need to set the "Sort by" option to "Most Votes"
 first_question_to_be_processed = True
 
 
 def download(problem_num, url, title, solution_slug):
     print(Fore.BLACK + Back.CYAN + f"Fetching problem num " + Back.YELLOW + f" {problem_num} " + Back.CYAN + " with url " + Back.YELLOW + f" {url} ")
-    # n = len(title)
     print('\t', end='')
 
     try:
@@ -64,79 +54,32 @@ def download(problem_num, url, title, solution_slug):
         for val in tt:
             problem_statement_examples_contraints += f'{val.lstrip().rstrip()} '
         print(Back.LIGHTMAGENTA_EX + '   ', end='')
-        # print('\t==> problem description')
-
 
 
 
         ####################################################################
         # For obtaining the most voted solution link of the problem
         ####################################################################
-        # time.sleep(0.5)
         url = url + '/solutions'
         driver.get(url)
-        # print('got here')
-        # Wait 10 secs or until div with class 'transition-[background] duration-500' appears
-        # element = WebDriverWait(driver, 10).until(
-        #     EC.presence_of_element_located((By.XPATH, "//button[@id='headlessui-menu-button-:r33:']"))
-        # )
-        # element = WebDriverWait(driver, 10).until(
-        #     lambda x: x.find_element(By.XPATH, "//button[.='Sort by']")
-        #     # id="headlessui-menu-button-:r33:"
-        #     # lambda x: x.find_element(By.XPATH, '//button[@id="headlessui-menu-button-:r33:"]')
-        #     # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
-        # )
-        # print('presence')
-        # element = driver.find_element(By.XPATH, "//button[.='Sort by']")
-        # element = driver.find_element(By.XPATH, "//button[@id='headlessui-menu-button-:r33:']")
-        # print('found')
-        # print(f'type = {element.tag_name}')
-
-        # print('l2')
+        
         global first_question_to_be_processed
         if first_question_to_be_processed:
-            # print('Waiting for "Sort by" to be clickable')
-            # time.sleep(40)
+            # wait for "Sort by" button to be clickable and then click it
             element = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[.='Sort by']"))
-                # lambda x: x.find_element(By.XPATH, "//button[.='Sort by']")
-                # id="headlessui-menu-button-:r33:"
-                # lambda x: x.find_element(By.XPATH, '//button[@id="headlessui-menu-button-:r33:"]')
-                # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
             )
             element.click()
-            # print('Clicked: Sort By')
-            # time.sleep(4)
-            # with open('temp.html', 'w') as ff:
-            #     ff.write(str(driver.page_source).encode('ascii', 'ignore').decode())
-            #     raise Exception('written')
-
-            # print('Waiting for "Most Votes" to be clickable')
+        
+            # wait for "Most Votes" button to be clickable and then click it
             element = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '//div[.="Most Votes"]'))
-                # lambda x: x.find_element(By.XPATH, '//div[.="Most Votes"]')
-                # id="headlessui-menu-button-:r33:"
-                # lambda x: x.find_element(By.XPATH, '//button[@id="headlessui-menu-button-:r33:"]')
-                # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
             )
-            # print(f'found element = {element}')
             element.click()
-            # print('Clicked: Most Votes')
-
-            # first_question_to_be_processed = False
+        
             time.sleep(2)
         
-
-        # element = WebDriverWait(driver, 10).until(
-        #     EC.
-        #     # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
-        # )
-
-
-        # raise Exception('break')
-
-        # url = url + '/?orderBy=most_votes'
-        # driver.get(url)
+        # wait for all solutions to be ordered in descending order of votes
         time.sleep(0.6)
         element = WebDriverWait(driver, 10).until(
             lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
@@ -145,40 +88,36 @@ def download(problem_num, url, title, solution_slug):
         html = driver.page_source
         soup = bs4.BeautifulSoup(html, "html.parser")
         tt = soup.find_all("div", {"class": "relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500"})
-        # time.sleep(3)
 
         for index, i in enumerate(tt):
             try:
-                # We encode and then decode to remove all the unnecessary UNICODE characters
-                # i = str(i).encode("ascii", "ignore").decode()
                 solution_slug = i.div.div.div.a['href']
                 solution_page_link = f'https://leetcode.com{solution_slug}'
                 print(Back.BLUE + '   ', end='')
-                # print(f'\t==> solution_link = {solution_page_link}')
+                
+
 
                 ####################################################################
                 # For obtaining the content of the most voted solution of the problem
                 ####################################################################
-                # time.sleep(0.5)
                 url = solution_page_link
                 driver.get(url)
+                
                 # Wait 10 secs or until div with class '_16yfq _2YoR3' appears
                 element = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "._16yfq._2YoR3"))
                 )
+                
                 # Get current tab page source
                 html = driver.page_source
                 soup = bs4.BeautifulSoup(html, "html.parser")
                 tt2 = soup.find("div", {"class": "_16yfq _2YoR3"})
                 txt1 = tt2.get_text()
                 txt1 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt1)])
-                # txt1 = tt2.get_text().encode("ascii", "ignore").decode().splitlines()
 
-                
                 tt2 = soup.find("div", {"class": "mb-6 rounded-lg px-3 py-2.5 font-menlo text-sm bg-fill-3 dark:bg-dark-fill-3"})
                 txt2 = tt2.get_text()
                 txt2 = ''.join([i if ord(i) < 128 else ' ' for i in str(txt2)])
-                # txt2 = tt2.get_text().encode("ascii", "ignore").decode().splitlines()
 
                 solution_content = ''
                 for text in txt1:
@@ -190,14 +129,13 @@ def download(problem_num, url, title, solution_slug):
                     raise Exception('video solution found')
 
                 print(Fore.BLACK + Back.WHITE + f' {index+1} ', end='')
-                # print(f'\t==> {index+1}. most voted solution content')
 
                 return problem_statement_examples_contraints, solution_page_link, solution_content
 
 
             except Exception as ee:
-                print(Back.RED + ' ^ ', end='')
                 # print(Back.RED + f" Failed!!: Error =  {ee} ")
+                print(Back.RED + ' ^ ', end='')
                 continue
 
 
@@ -212,9 +150,7 @@ def download(problem_num, url, title, solution_slug):
 
 
     
-
 def main():
-
     # Leetcode API URL to get json of problems on algorithms categories
     ALGORITHMS_ENDPOINT_URL = "https://leetcode.com/api/problems/algorithms/"
 
@@ -255,30 +191,19 @@ def main():
 
                 with open('data.csv', 'a') as fp:
                     print(Fore.BLACK + Back.CYAN + "  ==>  ", end='')
-                    # print(Fore.BLACK + Back.CYAN + f"\tWriting problem num " + Back.YELLOW + f' {problem_num} ' + Back.CYAN  + "  ==>  ", end='')
                     
                     row_item = ['`'.join(''.join([i if ord(i) < 128 else ' ' for i in str(x)]).replace('\n', ' ').split(',')) for x in row_item]
-                    # row_item = ['`'.join(str(x).encode("ascii", "ignore").decode().replace('\n', ' ').split(',')) for x in row_item]
 
                     fp.write(','.join(row_item) + '\n')
                     
                     print(Fore.BLACK + Back.GREEN + " SUCCESSFUL ")
                     print()
                     
-                    # print('l3')
                     global first_question_to_be_processed
                     first_question_to_be_processed = False
 
                     # Update upto which the problem is downloaded
                     update_tracker('track.conf', problem_num)
-
-            # # Sleep for 1.5 secs for each problem and 10 secs after every 30 problems
-            # if (problem_num+1) % 30 == 0:
-            #     print(f"Sleeping 10 secs\n")
-            #     time.sleep(10)
-            # else:
-            #     print(f"Sleeping 1.5 secs\n")
-            #     time.sleep(1.5)
 
     finally:
         # Close the browser after download
