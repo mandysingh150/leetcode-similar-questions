@@ -1,3 +1,4 @@
+import re
 import json
 import pickle
 import time
@@ -33,8 +34,13 @@ completed_upto = read_tracker("track.conf")
 
 # Load chapters list that stores chapter info
 # Store chapter info
-with open('chapters.pickle', 'rb') as f:
-    chapters = pickle.load(f)
+# with open('chapters.pickle', 'rb') as f:
+#     chapters = pickle.load(f)
+
+# print('l1')
+# if the first question of the session is to be processed, then we need to set the "Sort by" option to "Most Votes"
+first_question_to_be_processed = True
+
 
 def download(problem_num, url, title, solution_slug):
     print(Fore.BLACK + Back.CYAN + f"Fetching problem num " + Back.YELLOW + f" {problem_num} " + Back.CYAN + " with url " + Back.YELLOW + f" {url} ")
@@ -67,9 +73,71 @@ def download(problem_num, url, title, solution_slug):
         # For obtaining the most voted solution link of the problem
         ####################################################################
         # time.sleep(0.5)
-        url = url + '/solutions/?orderBy=most_votes'
+        url = url + '/solutions'
         driver.get(url)
+        # print('got here')
         # Wait 10 secs or until div with class 'transition-[background] duration-500' appears
+        # element = WebDriverWait(driver, 10).until(
+        #     EC.presence_of_element_located((By.XPATH, "//button[@id='headlessui-menu-button-:r33:']"))
+        # )
+        # element = WebDriverWait(driver, 10).until(
+        #     lambda x: x.find_element(By.XPATH, "//button[.='Sort by']")
+        #     # id="headlessui-menu-button-:r33:"
+        #     # lambda x: x.find_element(By.XPATH, '//button[@id="headlessui-menu-button-:r33:"]')
+        #     # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
+        # )
+        # print('presence')
+        # element = driver.find_element(By.XPATH, "//button[.='Sort by']")
+        # element = driver.find_element(By.XPATH, "//button[@id='headlessui-menu-button-:r33:']")
+        # print('found')
+        # print(f'type = {element.tag_name}')
+
+        # print('l2')
+        global first_question_to_be_processed
+        if first_question_to_be_processed:
+            # print('Waiting for "Sort by" to be clickable')
+            # time.sleep(40)
+            element = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[.='Sort by']"))
+                # lambda x: x.find_element(By.XPATH, "//button[.='Sort by']")
+                # id="headlessui-menu-button-:r33:"
+                # lambda x: x.find_element(By.XPATH, '//button[@id="headlessui-menu-button-:r33:"]')
+                # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
+            )
+            element.click()
+            # print('Clicked: Sort By')
+            # time.sleep(4)
+            # with open('temp.html', 'w') as ff:
+            #     ff.write(str(driver.page_source).encode('ascii', 'ignore').decode())
+            #     raise Exception('written')
+
+            # print('Waiting for "Most Votes" to be clickable')
+            element = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//div[.="Most Votes"]'))
+                # lambda x: x.find_element(By.XPATH, '//div[.="Most Votes"]')
+                # id="headlessui-menu-button-:r33:"
+                # lambda x: x.find_element(By.XPATH, '//button[@id="headlessui-menu-button-:r33:"]')
+                # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
+            )
+            # print(f'found element = {element}')
+            element.click()
+            # print('Clicked: Most Votes')
+
+            # first_question_to_be_processed = False
+            time.sleep(2)
+        
+
+        # element = WebDriverWait(driver, 10).until(
+        #     EC.
+        #     # lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
+        # )
+
+
+        # raise Exception('break')
+
+        # url = url + '/?orderBy=most_votes'
+        # driver.get(url)
+        time.sleep(0.6)
         element = WebDriverWait(driver, 10).until(
             lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
         )
@@ -77,6 +145,7 @@ def download(problem_num, url, title, solution_slug):
         html = driver.page_source
         soup = bs4.BeautifulSoup(html, "html.parser")
         tt = soup.find_all("div", {"class": "relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500"})
+        # time.sleep(3)
 
         for index, i in enumerate(tt):
             try:
@@ -116,6 +185,10 @@ def download(problem_num, url, title, solution_slug):
                     if text in txt2 and text.lstrip().rstrip() != '':
                         break
                     solution_content += f'{text}\n'
+
+                if re.match(r'.*\svideo[\s].*|.*\svideo[^a-zA-Z0-9].*', solution_content):
+                    raise Exception('video solution found')
+
                 print(Fore.BLACK + Back.WHITE + f' {index+1} ', end='')
                 # print(f'\t==> {index+1}. most voted solution content')
 
@@ -132,8 +205,8 @@ def download(problem_num, url, title, solution_slug):
         return '', '', ''
 
     except Exception as e:
-        print(Back.RED + ' X ')
         # print(Back.RED + f" Failed Writing!!  {e} ")
+        print(Back.RED + ' X ')
         driver.quit()
         exit(0)
 
@@ -165,7 +238,7 @@ def main():
             difficulty = child["difficulty"]["level"]
             links.append((question__title_slug, difficulty, frontend_question_id, question__title, question__article__slug))
 
-    # Sort by difficulty follwed by problem id in ascending order
+    # Sort by difficulty followed by problem id in ascending order
     links = sorted(links, key=lambda x: x[2])
 
     try: 
@@ -190,17 +263,22 @@ def main():
                     fp.write(','.join(row_item) + '\n')
                     
                     print(Fore.BLACK + Back.GREEN + " SUCCESSFUL ")
+                    print()
+                    
+                    # print('l3')
+                    global first_question_to_be_processed
+                    first_question_to_be_processed = False
 
                     # Update upto which the problem is downloaded
                     update_tracker('track.conf', problem_num)
 
-            # Sleep for 1.5 secs for each problem and 10 secs after every 30 problems
-            if (problem_num+1) % 30 == 0:
-                print(f"Sleeping 10 secs\n")
-                time.sleep(10)
-            else:
-                print(f"Sleeping 1.5 secs\n")
-                time.sleep(1.5)
+            # # Sleep for 1.5 secs for each problem and 10 secs after every 30 problems
+            # if (problem_num+1) % 30 == 0:
+            #     print(f"Sleeping 10 secs\n")
+            #     time.sleep(10)
+            # else:
+            #     print(f"Sleeping 1.5 secs\n")
+            #     time.sleep(1.5)
 
     finally:
         # Close the browser after download
