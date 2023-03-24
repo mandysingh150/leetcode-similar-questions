@@ -11,24 +11,15 @@ def update_tracker(file_name, problem_num):
      with open(file_name, "w") as f:
          f.write(str(problem_num))
 
-def dump_chapters_to_file(chapters):
-    """
-
-    """
-    with open('chapters.pickle', 'wb') as f:
-        pickle.dump(chapters, f)
-
 def reset_configuration():
     """
         Resets problem num downloaded upto to -1
-        Resets  all the chapters
-        Resets html file
+        Resets csv file
     """
     update_tracker("track.conf", -1)
-    dump_chapters_to_file([])
 
-    with open("out.html", "wb") as f:
-        f.write(b" ")
+    with open("data.csv", "w") as f:
+        f.write('frontend_question_id,question_title,problem_statement_examples_contraints,solution_page_link,solution_content\n')
 
 
 def read_tracker(file_name):

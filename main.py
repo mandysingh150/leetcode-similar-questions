@@ -19,7 +19,7 @@ colorama.init(autoreset=True)
 # Setup Selenium Webdriver
 CHROMEDRIVER_PATH = r"./driver/chromedriver.exe"
 options = Options()
-# options.add_argument('--headless=True')
+options.add_argument('--headless=True')
 # options.add_argument("start-maximized")
 
 # Disable Warning, Error and Info logs
@@ -137,7 +137,7 @@ def download(problem_num, url, title, solution_slug):
 
                 if (re.match(r'.*\svideo\s.*', solution_content)) or re.match(r'.*\svideo[^a-zA-Z0-9].*', solution_content):
                     author_id = soup.find("a", {"class": "no-underline text-label-2 dark:text-dark-label-2 text-xs overflow-hidden max-w-[100px] md:max-w-[200px] font-normal hover:text-blue-s dark:hover:text-dark-blue-s truncate"}).get_text()
-                    raise Exception(f'{author_id}')
+                    raise Exception(f'{author_id} {solution_page_link}')
                 
                 if solution_content == '':
                     raise Exception(f'{solution_page_link} ==> content is empty')
@@ -147,8 +147,8 @@ def download(problem_num, url, title, solution_slug):
                 return problem_statement_examples_contraints, solution_page_link, solution_content
 
             except Exception as ee:
-                print(Back.RED + f" Failed!!, Error =  {ee} ")
                 print(Back.RED + ' ^ ', end='')
+                # print(Back.RED + f" Failed!!, Error =  {ee} ")
                 continue
 
 
@@ -156,7 +156,7 @@ def download(problem_num, url, title, solution_slug):
         return '', '', ''
 
     except Exception as e:
-        print(Back.RED + f" Failed Writing!!, Error = {e} ")
+        # print(Back.RED + f" Failed Writing!!, Error = {e} ")
         print(Back.RED + ' X ')
         driver.quit()
         exit(0)
@@ -218,7 +218,7 @@ def main():
         print(Back.LIGHTYELLOW_EX + '\tDOWNLOAD COMPLETED\t')
 
     except Exception as e:
-        print(Back.RED + f" Failed in main!!, Error = {e} ")
+        # print(Back.RED + f" Failed in main!!, Error = {e} ")
         print(Back.RED + f" X ")
         
 
