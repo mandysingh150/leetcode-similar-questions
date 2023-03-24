@@ -33,6 +33,8 @@ Pip install all the requirements.
  - Update chrome driver path 
  - Run the following commands to download all algorithmic problems from leetcode `python main.py`.  This downloads problem contents to **data.csv** file.
 
+ You can also reset the **data.csv** file and **track.conf** files by running the command `python reset_all.py`.
+
  **NOTE:** Leetcode may temporarily block requests. If the error occurs, wait for sometime and try again or use the proxy. Don't worry, Since, the previous state is saved to ***track.conf*** file, the download resumes from where it failed. 
  
  
