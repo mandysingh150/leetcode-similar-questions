@@ -19,7 +19,7 @@ def reset_configuration():
     update_tracker("track.conf", -1)
 
     with open("data.csv", "w") as f:
-        f.write('frontend_question_id,question_title,problem_statement_examples_contraints,solution_page_link,solution_content\n')
+        f.write('frontend_question_id,question_title,problem_statement,examples,constraints,solution_page_link,solution_content\n')
 
 
 def read_tracker(file_name):

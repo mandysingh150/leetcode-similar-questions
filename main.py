@@ -33,6 +33,36 @@ completed_upto = read_tracker("track.conf")
 # if the first question of the session is to be processed, then we need to set the "Sort by" option to "Most Votes"
 # first_question_to_be_processed = True
 
+def get_problem_statement_examples_and_contraints(s):
+    s, contraints = s.split('Constraints:')
+
+    index = s.find('Example')    
+    if index == -1:
+        raise Exception(f'EXAMPLE NOT FOUND in {s}')
+    
+    problem_statement = s[:index].replace('\n', ' ').lstrip().rstrip()
+    
+    exampless = s[index:].replace('\n', '~~')
+    while len(exampless)>=2 and exampless[:2] == '~~':
+        exampless = exampless[2:].lstrip()
+    while len(exampless)>=2 and exampless[-2:] == '~~':
+        exampless = exampless[:-2].rstrip()    
+    
+    contraints = contraints.replace('\n', '~~')
+    for i in [3, 4, 5, 6, 7, 8, 9]:
+        contraints = contraints.replace(f'10{i}', '1'+('0'*i))
+        contraints = contraints.replace(f'-10{i}', '-1'+('0'*i))
+    for i in range(28, 32):
+        contraints = contraints.replace(f'2{i}', f'{(1<<i)}')
+        contraints = contraints.replace(f'-2{i}', f'-{(1<<i)}')
+    while len(contraints)>=2 and contraints[:2] == '~~':
+        contraints = contraints[2:].lstrip()
+    while len(contraints)>=2 and contraints[-2:] == '~~':
+        contraints = contraints[:-2].rstrip()
+
+    return problem_statement, exampless, contraints
+
+
 
 def download(problem_num, url, title, solution_slug):
     print(Fore.BLACK + Back.CYAN + f"Fetching problem num " + Back.YELLOW + f" {problem_num} " + Back.CYAN + " with url " + Back.YELLOW + f" {url} ")
@@ -50,12 +80,17 @@ def download(problem_num, url, title, solution_slug):
         # Get current tab page source
         html = driver.page_source
         soup = bs4.BeautifulSoup(html, "html.parser")
-        tt = soup.find("div", {"class": "_1l1MA"}).get_text().splitlines()
-        problem_statement_examples_contraints = ''
-        for val in tt:
-            problem_statement_examples_contraints += f'{val.lstrip().rstrip()} '
+        text = soup.find("div", {"class": "_1l1MA"}).get_text()
+        text = (''.join([i if ord(i) < 128 else ' ' for i in text]))
+        problem_statement, examples, constraints = get_problem_statement_examples_and_contraints(text)
+        # .splitlines()
+        # problem_statement_examples_contraints = ''
+        # for val in tt:
+        #     if val == '':
+        #         continue
+        #     problem_statement_examples_contraints += f'{val.lstrip().rstrip()} '
 
-        assert problem_statement_examples_contraints != ''
+        assert problem_statement != '' and examples != '' and constraints != ''
         print(Back.LIGHTMAGENTA_EX + '   ', end='')
 
 
@@ -87,7 +122,7 @@ def download(problem_num, url, title, solution_slug):
             time.sleep(4)
         
         # wait for all solutions to be ordered in descending order of votes
-        time.sleep(0.8)
+        time.sleep(1.25)
         element = WebDriverWait(driver, 10).until(
             lambda x: x.find_element(By.XPATH, "//*[@class='relative flex w-full gap-4 px-5 py-3 transition-[background] duration-500']")
         )
@@ -133,7 +168,7 @@ def download(problem_num, url, title, solution_slug):
                 for text in txt1:
                     if text.lstrip().rstrip() == '' or (text in txt2 and text.lstrip().rstrip() != ''):
                         continue
-                    solution_content += f'{text}~~'
+                    solution_content += f'{text.lstrip().rstrip()}~~'
 
                 if (re.match(r'.*\svideo\s.*', solution_content)) or re.match(r'.*\svideo[^a-zA-Z0-9].*', solution_content):
                     author_id = soup.find("a", {"class": "no-underline text-label-2 dark:text-dark-label-2 text-xs overflow-hidden max-w-[100px] md:max-w-[200px] font-normal hover:text-blue-s dark:hover:text-dark-blue-s truncate"}).get_text()
@@ -144,7 +179,7 @@ def download(problem_num, url, title, solution_slug):
 
                 print(Fore.BLACK + Back.WHITE + f' {index+1} ', end='')
 
-                return problem_statement_examples_contraints, solution_page_link, solution_content
+                return problem_statement, examples, constraints, solution_page_link, solution_content
 
             except Exception as ee:
                 print(Back.RED + ' ^ ', end='')
@@ -187,6 +222,8 @@ def main():
             difficulty = child["difficulty"]["level"]
             links.append((question__title_slug, difficulty, frontend_question_id, question__title, question__article__slug))
 
+    print(f'\n' + Back.GREEN + Fore.BLACK + f' Total # of questions = ' + Back.YELLOW + f' {len(links)} ' + Back.BLACK + Fore.WHITE + '\n\n')
+
     # Sort by difficulty followed by problem id in ascending order
     links = sorted(links, key=lambda x: x[2])
 
@@ -196,16 +233,15 @@ def main():
             url = ALGORITHMS_BASE_URL + question__title_slug
             title = f"{frontend_question_id}. {question__title}"
 
-            # Download each file as html and write chapter to chapters.pickle
-            problem_statement_examples_contraints, solution_page_link, solution_content = download(frontend_question_id, url , title, question__article__slug)
+            problem_statement, examples, constraints, solution_page_link, solution_content = download(frontend_question_id, url , title, question__article__slug)
 
-            if problem_statement_examples_contraints != '':
-                row_item = [frontend_question_id, question__title, problem_statement_examples_contraints, solution_page_link, solution_content]
+            if problem_statement != '' and examples != '' and constraints != '':
+                row_item = [frontend_question_id, question__title, problem_statement, examples, constraints, solution_page_link, solution_content]
 
                 with open('data.csv', 'a') as fp:
                     print(Fore.BLACK + Back.CYAN + "  ==>  ", end='')
                     
-                    row_item = ['`'.join(''.join([i if ord(i) < 128 else ' ' for i in str(x)]).replace('\n', ' ').split(',')) for x in row_item]
+                    row_item = [''.join([i if ord(i) < 128 else ' ' for i in str(x)]).replace('\n', '~~').replace(',', '`') for x in row_item]
 
                     fp.write(','.join(row_item) + '\n')
                     
